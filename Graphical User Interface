@@ -1,0 +1,717 @@
+import tkinter as tk
+import pickle
+ 
+# These are like containers that store different things
+# Think of them as boxes where we put different stuff
+people_data = {}  # This holds all info about users
+racing_tickets = {}  # This holds all the ticket options we sell
+customer_purchases = {}  # This keeps track of all tickets people bought
+ 
+ 
+# This tries to get the saved user info from a file
+# If there's no file, it just gives back an empty container
+def load_users():
+    try:
+        # Open the file and read what's in it
+        with open('users.pkl', 'rb') as f:
+            return pickle.load(f)
+    except (FileNotFoundError, EOFError):
+        # If no file exists, start fresh with empty box
+        return {}
+ 
+ 
+# This saves all the user info to a file
+# So when we close the program, we don't lose the data
+def save_users():
+    # Open a file and write all user info to it
+    with open('users.pkl', 'wb') as f:
+        pickle.dump(people_data, f)
+ 
+ 
+# This tries to get the saved ticket info from a file
+# If there's no file, it creates some default tickets
+def load_tickets():
+    try:
+        # Try to open the file and read ticket info
+        with open('tickets.pkl', 'rb') as f:
+            return pickle.load(f)
+    except (FileNotFoundError, EOFError, AttributeError):
+        # If file missing, use these tickets as starting point
+        return {
+            "Single Race Pass": {"price": 100, "validity": "1 day", "features": "Access to one race"},
+            "Weekend Package": {"price": 250, "validity": "3 days", "features": "Access to all races in a weekend"},
+            "Group Discount": {"price": 200, "validity": "1 day", "features": "Access for a group of 5"}
+        }
+ 
+ 
+# This saves all the ticket info to a file
+# So we don't lose the data when program closes
+def save_tickets():
+    # Write all ticket data to a file
+    with open('tickets.pkl', 'wb') as f:
+        pickle.dump(racing_tickets, f)
+ 
+ 
+# This tries to get saved purchase records from a file
+# If there's no file, it starts with empty records
+def load_orders():
+    try:
+        # Try to open file and read purchase history
+        with open('orders.pkl', 'rb') as f:
+            return pickle.load(f)
+    except (FileNotFoundError, EOFError):
+        # If no purchase history exists yet, start fresh
+        return {}
+ 
+ 
+# This saves all purchase records to a file
+# So we keep track of all tickets sold, even after closing
+def save_orders():
+    # Write all purchase data to a file
+    with open('orders.pkl', 'wb') as f:
+        pickle.dump(customer_purchases, f)
+ 
+ 
+# This is the main program that handles everything
+# Like the brain of the whole system
+class TicketBookingApp:
+    def __init__(self, window):
+        # Setup the main window that users see
+        self.window = window
+        self.window.title("Grand Prix Ticket Booking System")
+        # Connect to our purchase records
+        self.orders = customer_purchases
+        # Start by showing the login screen
+        self.show_login_screen()
+ 
+    # This cleans up the window by removing everything on it
+    # Like wiping a whiteboard clean to draw something new
+    def clear_window(self):
+        for component in self.window.winfo_children():
+            # destroy removes a thing from the window completely
+            component.destroy()
+ 
+    # This creates the login screen
+    # It's the first thing users see when they open the app
+    def show_login_screen(self):
+        self.clear_window()
+        # Label is just text that shows on screen
+        # pack puts it on the window at the next available spot
+        tk.Label(self.window, text="Login").pack()
+        tk.Label(self.window, text="Email").pack()
+        # Entry is a box where users can type things
+        self.email_entry = tk.Entry(self.window)
+        self.email_entry.pack()
+        tk.Label(self.window, text="Password").pack()
+        # show="*" makes password show as stars for privacy
+        self.password_entry = tk.Entry(self.window, show="*")
+        self.password_entry.pack()
+        # Button creates a clickable button
+        # command tells it what function to run when clicked
+        tk.Button(self.window, text="Login", command=self.login).pack()
+        tk.Button(self.window, text="Create Account", command=self.show_account_creation).pack()
+        tk.Button(self.window, text="Admin Login", command=self.show_admin_login_window).pack()
+ 
+    # This creates a separate window for admin login
+    # Like a special entrance for staff only
+    def show_admin_login_window(self):
+        # Toplevel creates a new window on top of main window
+        self.admin_window = tk.Toplevel(self.window)
+        self.admin_window.title("Admin Login")
+ 
+        # Add login form to new window
+        tk.Label(self.admin_window, text="Admin Login").pack()
+        tk.Label(self.admin_window, text="Email").pack()
+        self.admin_email_entry = tk.Entry(self.admin_window)
+        self.admin_email_entry.pack()
+        tk.Label(self.admin_window, text="Password").pack()
+        self.admin_password_entry = tk.Entry(self.admin_window, show="*")
+        self.admin_password_entry.pack()
+        tk.Button(self.admin_window, text="Login", command=self.process_admin_login).pack()
+ 
+    # This checks if admin login details are correct
+    # And lets them in if they have the right password
+    def process_admin_login(self):
+        email = self.admin_email_entry.get()
+        password = self.admin_password_entry.get()
+ 
+        # Check if email and password match the admin account
+        if email == 'admin@admin.com' and password == 'admin123':
+            self.user_email = email
+            # destroy closes the admin login window
+            self.admin_window.destroy()
+            # Show the admin dashboard directly
+            self.show_admin_dashboard()
+        else:
+            # Show error message if wrong password
+            tk.Label(self.admin_window, text="Invalid admin credentials.").pack()
+ 
+    # This creates the account creation screen
+    # Where new users can sign up
+    def show_account_creation(self):
+        self.clear_window()
+        tk.Label(self.window, text="Create Account").pack()
+        tk.Label(self.window, text="Name").pack()
+        self.name_entry = tk.Entry(self.window)
+        self.name_entry.pack()
+        tk.Label(self.window, text="Email").pack()
+        self.email_entry = tk.Entry(self.window)
+        self.email_entry.pack()
+        tk.Label(self.window, text="Age").pack()
+        self.age_entry = tk.Entry(self.window)
+        self.age_entry.pack()
+        tk.Label(self.window, text="Password").pack()
+        self.password_entry = tk.Entry(self.window, show="*")
+        self.password_entry.pack()
+        tk.Button(self.window, text="Create", command=self.create_account).pack()
+        tk.Button(self.window, text="Back", command=self.show_login_screen).pack()
+ 
+    # This checks if login details are correct
+    # And lets users in if they have the right password
+    def login(self):
+        # get takes whatever the user typed in the box
+        email = self.email_entry.get()
+        password = self.password_entry.get()
+ 
+        # Check if email has @ symbol (basic check)
+        if "@" not in email:
+            tk.Label(self.window, text="Invalid email format.").pack()
+            return
+ 
+        # Check if email exists and password matches
+        if email in people_data and people_data[email]['password'] == password:
+            self.user_email = email
+            # If correct, show the main screen
+            self.show_dashboard()
+        else:
+            # If wrong, show error message
+            tk.Label(self.window, text="Invalid login credentials.").pack()
+ 
+    # This shows the main screen after login
+    # Different for regular users and admins
+    def show_dashboard(self):
+        self.clear_window()
+ 
+        # Check if regular user or admin
+        if self.user_email != 'admin@admin.com':
+            # Get this user's info from our data
+            user_info = people_data[self.user_email]
+ 
+            # Create a box with border to show user info
+            # relief and borderwidth make it look like a box with edge
+            info_frame = tk.Frame(self.window, relief=tk.GROOVE, borderwidth=2)
+            # fill=tk.X makes it stretch horizontally
+            info_frame.pack(padx=20, pady=10, fill=tk.X)
+ 
+            # Show user info inside the box
+            tk.Label(info_frame, text="User Profile").pack(pady=5)
+            # anchor=tk.W aligns text to the left side (West)
+            tk.Label(info_frame, text=f"Name: {user_info['name']}").pack(anchor=tk.W, padx=10)
+            tk.Label(info_frame, text=f"Email: {self.user_email}").pack(anchor=tk.W, padx=10)
+            tk.Label(info_frame, text=f"Age: {user_info['age']}").pack(anchor=tk.W, padx=10)
+ 
+            # Show optional info if it exists
+            if 'gender' in user_info and user_info['gender']:
+                tk.Label(info_frame, text=f"Gender: {user_info['gender']}").pack(anchor=tk.W, padx=10)
+            if 'phone' in user_info and user_info['phone']:
+                tk.Label(info_frame, text=f"Phone: {user_info['phone']}").pack(anchor=tk.W, padx=10)
+ 
+            # Add edit button inside the info box
+            tk.Button(info_frame, text="Edit Profile", command=self.edit_profile).pack(pady=10)
+        else:
+            # Simpler view for admin
+            tk.Label(self.window, text="Welcome, Admin").pack(pady=10)
+ 
+        # Add buttons for all users
+        tk.Button(self.window, text="Buy Ticket", command=self.show_ticket_options).pack(pady=5)
+        tk.Button(self.window, text="View Order History", command=self.show_order_history).pack(pady=5)
+ 
+        # Admin only button
+        if self.user_email == 'admin@admin.com':
+            tk.Button(self.window, text="Admin Dashboard", command=self.show_admin_dashboard).pack(pady=5)
+ 
+        # Logout button for everyone
+        tk.Button(self.window, text="Logout", command=self.show_login_screen).pack(pady=5)
+ 
+    # This lets users edit their profile information
+    # So they can update name, password, etc.
+    def edit_profile(self):
+        # Create a new window for editing
+        edit_window = tk.Toplevel(self.window)
+        edit_window.title("Edit Profile")
+ 
+        # Get user's current info
+        user_info = people_data[self.user_email]
+ 
+        # Make variables to store the edited values
+        # StringVar is a special variable that can connect to entry boxes
+        self.edit_name_var = tk.StringVar(edit_window)
+        # set puts a starting value in the variable
+        self.edit_name_var.set(user_info['name'])
+ 
+        self.edit_email_var = tk.StringVar(edit_window)
+        self.edit_email_var.set(self.user_email)
+ 
+        self.edit_age_var = tk.StringVar(edit_window)
+        self.edit_age_var.set(user_info['age'])
+ 
+        self.edit_password_var = tk.StringVar(edit_window)
+        self.edit_password_var.set(user_info['password'])
+ 
+        # Variables for optional fields
+        self.edit_gender_var = tk.StringVar(edit_window)
+        # get() lets us safely try to get a value that might not exist
+        self.edit_gender_var.set(user_info.get('gender', ''))
+ 
+        self.edit_phone_var = tk.StringVar(edit_window)
+        self.edit_phone_var.set(user_info.get('phone', ''))
+ 
+        # Form fields for editing profile
+        tk.Label(edit_window, text="Name:").pack(anchor=tk.W, padx=10, pady=5)
+        # textvariable connects the entry box to our variable
+        name_entry = tk.Entry(edit_window, textvariable=self.edit_name_var)
+        name_entry.pack(fill=tk.X, padx=10, pady=5)
+ 
+        tk.Label(edit_window, text="Email:").pack(anchor=tk.W, padx=10, pady=5)
+        email_entry = tk.Entry(edit_window, textvariable=self.edit_email_var)
+        email_entry.pack(fill=tk.X, padx=10, pady=5)
+ 
+        tk.Label(edit_window, text="Age:").pack(anchor=tk.W, padx=10, pady=5)
+        age_entry = tk.Entry(edit_window, textvariable=self.edit_age_var)
+        age_entry.pack(fill=tk.X, padx=10, pady=5)
+ 
+        tk.Label(edit_window, text="Gender (optional):").pack(anchor=tk.W, padx=10, pady=5)
+        gender_entry = tk.Entry(edit_window, textvariable=self.edit_gender_var)
+        gender_entry.pack(fill=tk.X, padx=10, pady=5)
+ 
+        tk.Label(edit_window, text="Phone Number (optional):").pack(anchor=tk.W, padx=10, pady=5)
+        phone_entry = tk.Entry(edit_window, textvariable=self.edit_phone_var)
+        phone_entry.pack(fill=tk.X, padx=10, pady=5)
+ 
+        tk.Label(edit_window, text="Password:").pack(anchor=tk.W, padx=10, pady=5)
+        password_entry = tk.Entry(edit_window, textvariable=self.edit_password_var, show="*")
+        password_entry.pack(fill=tk.X, padx=10, pady=5)
+ 
+        # Frame to hold buttons side by side
+        btn_frame = tk.Frame(edit_window)
+        btn_frame.pack(pady=10)
+ 
+        # Save button - lambda is like a mini-function we create on the spot
+        # It lets us pass the edit_window to save_profile_changes
+        tk.Button(btn_frame, text="Save Changes",
+                  command=lambda: self.save_profile_changes(edit_window)).pack(side=tk.LEFT, padx=5)
+ 
+        # Cancel button - just closes the window without saving
+        tk.Button(btn_frame, text="Cancel",
+                  command=edit_window.destroy).pack(side=tk.LEFT, padx=5)
+ 
+    # This saves profile changes when user clicks Save
+    # Updates all the user info with new values
+    def save_profile_changes(self, edit_window):
+        # Get all the new values
+        new_name = self.edit_name_var.get()
+        new_email = self.edit_email_var.get()
+        new_age = self.edit_age_var.get()
+        new_password = self.edit_password_var.get()
+        new_gender = self.edit_gender_var.get()
+        new_phone = self.edit_phone_var.get()
+ 
+        # Check if email format is valid
+        if "@" not in new_email:
+            # fg makes the text red for error
+            tk.Label(edit_window, text="Invalid email format.", fg="red").pack()
+            return
+ 
+        # Handle email change specially
+        if new_email != self.user_email:
+            # Check if new email already exists
+            if new_email in people_data and new_email != self.user_email:
+                tk.Label(edit_window, text="Email already in use.", fg="red").pack()
+                return
+ 
+            # Copy the user data to the new email
+            # copy() makes a fresh copy instead of linking to original
+            user_data = people_data[self.user_email].copy()
+ 
+            # Remove the old email entry
+            del people_data[self.user_email]
+ 
+            # Create new entry with the new email
+            people_data[new_email] = user_data
+ 
+            # Update orders list if they have any
+            if self.user_email in self.orders:
+                self.orders[new_email] = self.orders[self.user_email]
+                del self.orders[self.user_email]
+ 
+            # Update current session email
+            self.user_email = new_email
+ 
+        # Update all the user information
+        people_data[self.user_email]['name'] = new_name
+        people_data[self.user_email]['age'] = new_age
+        people_data[self.user_email]['password'] = new_password
+        people_data[self.user_email]['gender'] = new_gender
+        people_data[self.user_email]['phone'] = new_phone
+ 
+        # Save all changes to file
+        save_users()
+ 
+        # Close the edit window
+        edit_window.destroy()
+ 
+        # Show main screen again with updated info
+        self.show_dashboard()
+ 
+    # This shows all ticket types available for purchase
+    # So users can pick which one they want
+    def show_ticket_options(self):
+        self.clear_window()
+        tk.Label(self.window, text="Select Ticket Type").pack()
+ 
+        # For each ticket type, create a button
+        # The 't=ticket' in lambda lets us pass which ticket was clicked
+        for ticket in racing_tickets:
+            tk.Button(self.window, text=ticket, command=lambda t=ticket: self.show_payment_screen(t)).pack()
+ 
+        tk.Button(self.window, text="Back", command=self.show_dashboard).pack()
+ 
+    # This shows the payment screen for the selected ticket
+    # Where users enter payment info to buy tickets
+    def show_payment_screen(self, ticket_type):
+        self.clear_window()
+ 
+        # Show ticket details at the top
+        tk.Label(self.window, text=f"Ticket: {ticket_type}").pack(pady=5)
+        tk.Label(self.window, text=f"Price: ${racing_tickets[ticket_type]['price']}").pack()
+        tk.Label(self.window, text=f"Validity: {racing_tickets[ticket_type]['validity']}").pack()
+        tk.Label(self.window, text=f"Features: {racing_tickets[ticket_type]['features']}").pack()
+ 
+        # Add a gray line to separate sections
+        tk.Frame(self.window, height=2, bg="gray").pack(fill="x", pady=10)
+ 
+        # Date selection field
+        tk.Label(self.window, text="Race Date (DD-MM-YYYY)").pack()
+        self.race_date_entry = tk.Entry(self.window)
+        self.race_date_entry.pack(pady=5)
+ 
+        # Another separating line
+        tk.Frame(self.window, height=2, bg="gray").pack(fill="x", pady=10)
+ 
+        # Payment details section
+        tk.Label(self.window, text="Payment Details").pack(pady=5)
+        tk.Label(self.window, text="Card Number").pack()
+        self.card_entry = tk.Entry(self.window)
+        self.card_entry.pack()
+        tk.Label(self.window, text="Name on Card").pack()
+        self.name_on_card_entry = tk.Entry(self.window)
+        self.name_on_card_entry.pack()
+        tk.Label(self.window, text="Expiry Date (MM/YY)").pack()
+        self.expiry_entry = tk.Entry(self.window)
+        self.expiry_entry.pack()
+        tk.Label(self.window, text="CVV").pack()
+        self.cvv_entry = tk.Entry(self.window, show="*")
+        self.cvv_entry.pack()
+ 
+        # Buttons
+        # Again using lambda to pass the ticket_type to confirm_payment
+        tk.Button(self.window, text="Pay", command=lambda: self.confirm_payment(ticket_type)).pack(pady=5)
+        tk.Button(self.window, text="Back", command=self.show_ticket_options).pack()
+ 
+    # This processes the payment and creates the order
+    # After user enters payment info and clicks Pay
+    def confirm_payment(self, ticket_type):
+        # Check if all payment fields are filled
+        if not self.card_entry.get() or not self.name_on_card_entry.get() or not self.expiry_entry.get() or not self.cvv_entry.get():
+            tk.Label(self.window, text="All payment fields are required.").pack()
+            return
+ 
+        # Check if date was entered
+        race_date = self.race_date_entry.get()
+        if not race_date:
+            tk.Label(self.window, text="Please enter a race date.").pack()
+            return
+ 
+        # Create a record of the purchase
+        order = {
+            "ticket": ticket_type,
+            "status": "Paid",
+            "date": race_date
+        }
+ 
+        # Add to this user's orders
+        email = self.user_email
+        if email not in self.orders:
+            # Create a new list if first purchase
+            self.orders[email] = []
+ 
+        # Add this order to their list
+        self.orders[email].append(order)
+ 
+        # Save all orders to file
+        save_orders()
+ 
+        # Show success message
+        tk.Label(self.window, text="Payment Successful!").pack()
+        tk.Button(self.window, text="Done", command=self.show_dashboard).pack()
+ 
+    # This shows all the tickets a user has purchased
+    # And lets them modify or cancel orders
+    def show_order_history(self):
+        self.clear_window()
+        tk.Label(self.window, text="Order History").pack(pady=10)
+ 
+        email = self.user_email
+        # Check if user has any orders
+        if email in self.orders and self.orders[email]:
+            # Count to keep track of which order we're showing
+            idx = 0
+            for order in self.orders[email]:
+                # Create a box for each order
+                order_frame = tk.Frame(self.window, relief=tk.GROOVE, borderwidth=2)
+                order_frame.pack(fill=tk.X, padx=20, pady=5)
+ 
+                # grid lets us layout things in rows and columns
+                # row and column tell position, sticky determines alignment
+                tk.Label(order_frame, text=f"Order #{idx + 1}").grid(row=0, column=0,
+                                                                     sticky=tk.W, padx=10,
+                                                                     pady=5)
+                tk.Label(order_frame, text=f"Ticket: {order['ticket']}").grid(row=1, column=0, sticky=tk.W, padx=10)
+                tk.Label(order_frame, text=f"Status: {order['status']}").grid(row=2, column=0, sticky=tk.W, padx=10)
+ 
+                # Show date if available
+                if 'date' in order:
+                    tk.Label(order_frame, text=f"Date: {order['date']}").grid(row=3, column=0, sticky=tk.W, padx=10,
+                                                                              pady=5)
+                else:
+                    tk.Label(order_frame, text="Date: Not specified").grid(row=3, column=0, sticky=tk.W, padx=10,
+                                                                           pady=5)
+ 
+                # Buttons for actions
+                # Using lambda to pass which order (idx) to modify
+                tk.Button(order_frame, text="Modify",
+                          command=lambda i=idx: self.modify_order(i)).grid(row=1, column=1, padx=5)
+                tk.Button(order_frame, text="Delete",
+                          command=lambda i=idx: self.delete_order(i)).grid(row=2, column=1, padx=5)
+ 
+                # Move to next order in list
+                idx += 1
+        else:
+            # If no orders, show message
+            tk.Label(self.window, text="No orders yet.").pack(pady=20)
+ 
+        # Back button
+        tk.Button(self.window, text="Back", command=self.show_dashboard).pack(pady=10)
+ 
+    # This handles deleting an order
+    # Shows confirmation dialog first
+    def delete_order(self, order_index):
+        # Create a pop-up window for confirmation
+        confirm_window = tk.Toplevel(self.window)
+        confirm_window.title("Confirm Deletion")
+ 
+        tk.Label(confirm_window, text="Are you sure you want to delete this order?").pack(pady=10, padx=20)
+ 
+        # Frame for buttons side by side
+        btn_frame = tk.Frame(confirm_window)
+        btn_frame.pack(pady=10)
+ 
+        # Yes button - calls confirm_delete with the order index and window
+        tk.Button(btn_frame, text="Yes", command=lambda: self.confirm_delete(order_index, confirm_window)).pack(
+            side=tk.LEFT, padx=10)
+ 
+        # No button - just closes the window
+        tk.Button(btn_frame, text="No", command=confirm_window.destroy).pack(side=tk.LEFT, padx=10)
+ 
+    # This actually deletes the order after confirmation
+    # Removes it from the system completely
+    def confirm_delete(self, order_index, confirm_window):
+        # pop removes an item from a list at specific position
+        self.orders[self.user_email].pop(order_index)
+ 
+        # Save changes to file
+        save_orders()
+ 
+        # Close the confirmation window
+        confirm_window.destroy()
+ 
+        # Refresh the order list
+        self.show_order_history()
+ 
+    # This lets users change an existing order
+    # To pick a different ticket or date
+    def modify_order(self, order_index):
+        # Create new window for modification
+        modify_window = tk.Toplevel(self.window)
+        modify_window.title("Modify Order")
+ 
+        # Get the order being changed
+        current_order = self.orders[self.user_email][order_index]
+ 
+        # Show current ticket
+        tk.Label(modify_window, text=f"Current Ticket: {current_order['ticket']}").pack(pady=10)
+ 
+        # Ticket selection section
+        tk.Label(modify_window, text="Select New Ticket Type:").pack()
+ 
+        # Variable to store the selected ticket
+        self.new_ticket_var = tk.StringVar(modify_window)
+        # Start with current ticket selected
+        self.new_ticket_var.set(current_order['ticket'])
+ 
+        # Frame to hold ticket buttons side by side
+        ticket_frame = tk.Frame(modify_window)
+        ticket_frame.pack(pady=5)
+ 
+        # Create a button for each ticket type
+        for ticket_type in racing_tickets:
+            tk.Button(ticket_frame,
+                      text=ticket_type,
+                      command=lambda t=ticket_type: self.set_ticket_type(t)).pack(side=tk.LEFT, padx=5)
+ 
+        # Show which ticket is currently selected
+        self.ticket_selection_label = tk.Label(modify_window, text=f"Selected: {self.new_ticket_var.get()}")
+        self.ticket_selection_label.pack(pady=5)
+ 
+        # Date field
+        tk.Label(modify_window, text="Race Date (DD-MM-YYYY):").pack(pady=10)
+        self.mod_race_date_entry = tk.Entry(modify_window)
+        self.mod_race_date_entry.pack(pady=5)
+ 
+        # Fill in current date if exists
+        if 'date' in current_order:
+            # insert puts text in the entry box
+            # 0 means start at the beginning of the box
+            self.mod_race_date_entry.insert(0, current_order['date'])
+ 
+        # Save button
+        tk.Button(modify_window, text="Save Changes",
+                  command=lambda: self.save_order_changes(order_index, modify_window)).pack(pady=10)
+ 
+        # Cancel button
+        tk.Button(modify_window, text="Cancel", command=modify_window.destroy).pack()
+ 
+    # This updates which ticket is selected
+    # Called when a ticket button is clicked
+    def set_ticket_type(self, ticket_type):
+        # Update the selected ticket
+        self.new_ticket_var.set(ticket_type)
+        # Update the label to show current selection
+        # config changes properties of an existing widget
+        self.ticket_selection_label.config(text=f"Selected: {ticket_type}")
+ 
+    # This saves changes to an order
+    # Updates the order with new ticket and date
+    def save_order_changes(self, order_index, modify_window):
+        # Get the newly selected ticket
+        new_ticket = self.new_ticket_var.get()
+        # Update the order with new ticket
+        self.orders[self.user_email][order_index]['ticket'] = new_ticket
+ 
+        # Get and check the new date
+        new_date = self.mod_race_date_entry.get()
+        if not new_date:
+            tk.Label(modify_window, text="Please enter a race date.").pack()
+            return
+ 
+        # Update the date
+        self.orders[self.user_email][order_index]['date'] = new_date
+ 
+        # Save changes to file
+        save_orders()
+ 
+        # Close the modification window
+        modify_window.destroy()
+ 
+        # Show updated order list
+        self.show_order_history()
+        tk.Label(self.window, text="Order updated successfully!").pack()
+ 
+    # This creates a new user account
+    # Adds them to the system so they can login
+    def create_account(self):
+        # Get all the entered values
+        name = self.name_entry.get()
+        email = self.email_entry.get()
+        age = self.age_entry.get()
+        password = self.password_entry.get()
+ 
+        # Check if any fields are empty
+        if not name or not email or not age or not password:
+            tk.Label(self.window, text="All fields are required.").pack()
+            return
+ 
+        # Basic email check
+        if "@" not in email:
+            tk.Label(self.window, text="Invalid email format.").pack()
+            return
+ 
+        # Create new user with entered info
+        people_data[email] = {
+            "name": name,
+            "email": email,
+            "age": age,
+            "password": password,
+            "gender": "",  # Empty optional fields to start
+            "phone": ""
+        }
+ 
+        # Save to file
+        save_users()
+ 
+        # Log them in automatically
+        self.user_email = email
+        self.show_dashboard()
+ 
+    # This shows the admin dashboard
+    # For managing the system (admin only)
+    def show_admin_dashboard(self):
+        self.clear_window()
+        tk.Label(self.window, text="Admin Dashboard").pack()
+ 
+        # Count total tickets sold
+        count = 0
+        for orders in self.orders.values():
+            # values() gives all the values in a dictionary
+            # len counts how many items in a list
+            count += len(orders)
+ 
+        tk.Label(self.window, text=f"Total Tickets Sold: {count}").pack()
+ 
+        # Discount management section
+        tk.Label(self.window, text="Modify Discount Availability:").pack()
+        self.discount_entry = tk.Entry(self.window)
+        self.discount_entry.pack()
+        tk.Button(self.window, text="Update Discount", command=self.update_discount).pack()
+ 
+        # Logout button
+        tk.Button(self.window, text="Logout", command=self.show_login_screen).pack()
+ 
+        # This updates the discount information
+        # Just a simple placeholder for now
+ 
+    def update_discount(self):
+        # Get whatever was typed in the box
+        discount = self.discount_entry.get()
+        # Show confirmation message
+        tk.Label(self.window, text=f"Discount Updated: {discount}").pack()
+ 
+    # This is the starting point of the program
+    # It runs when you start the application
+if __name__ == "__main__":
+        # Load all our saved data from files
+        people_data = load_users()
+        racing_tickets = load_tickets()
+        customer_purchases = load_orders()
+ 
+        # Create the main window and start the program
+        root_window = tk.Tk()
+        app = TicketBookingApp(root_window)
+        # mainloop keeps the window open and responsive
+        # until the user closes it
+        root_window.mainloop()
+ 
+        # When program closes, save all data to files
+        save_users()
+        save_tickets()
+        save_orders()
