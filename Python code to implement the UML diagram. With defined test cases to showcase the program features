@@ -1,0 +1,487 @@
+# We created a simple implementation for abstract classes (We learnt this in past courses, and the start of this course)
+from datetime import date, datetime
+from typing import List
+
+# Here we are marking methods as abstract
+def abstractmethod(func):
+    func.__isabstract__ = True
+    return func
+
+# Here are all the base class for classes that should have abstract methods
+class AbstractClass:
+    def __new__(cls, *args, **kwargs):
+        # Here we are checking if the class being instantiated has any abstract methods
+        for name, method in cls.__dict__.items():
+            if getattr(method, "__isabstract__", False):
+                raise TypeError(f"Can't instantiate abstract class {cls.__name__} with abstract method {name}")
+        return super().__new__(cls)
+
+# Here is the base User class
+# This class serves as the parent class for all user types in the system
+# As we learned in this course it implements the common attributes and behaviors shared by all users
+class User:
+    def __init__(self, username, password):
+        self.username = username  #Here is the unique identifier for the user
+        self.password = password  # Here is the user's authentication credential
+
+    def login(self):
+        # Authenticates the user and grants system access
+        print(f"User {self.username} logged in successfully")
+        return True
+
+    def logout(self):
+        # Ends the user's session securely
+        print(f"User {self.username} logged out successfully")
+
+# Customer class inherits from User as we learned in this course
+# Represents fans who can purchase tickets and manage their accounts
+class Customer(User):
+    def __init__(self, username, password, firstname, lastname, address, phone, email):
+        super().__init__(username, password)
+        self.firstname = firstname  # Customer's first name
+        self.lastname = lastname    # Customer's last name
+        self.address = address      # Customer's mailing address
+        self.phone = phone          # Customer's contact number
+        self.email = email          # Customer's email address
+        self.purchase_history = []  # List to store all past orders (aggregation relationship as represented in the UMl)
+
+    def view_history(self):
+        # Displays all previous purchases made by the customer
+        if not self.purchase_history:
+            print("No purchase history available.")
+            return []
+
+        print(f"\n{self.firstname}'s Purchase History:")
+        for i, order in enumerate(self.purchase_history, 1):
+            print(f"{i}. Order ID: {order.orderID} - Date: {order.purchaseDate} - Total: ${order.calculate_total():.2f}")
+
+        return self.purchase_history
+
+    def update_details(self):
+        # Updates customer profile information
+        print(f"Updated details for customer {self.firstname} {self.lastname}")
+
+# Administrator class inherits from User as we learned in this course
+# Represents system administrators who manage events, users, and handle special operations
+class Administrator(User):
+    def __init__(self, username, password, adminID):
+        super().__init__(username, password)
+        self.adminID = adminID  # Here is the unique identifier for the administrator
+
+    def handle_refund(self, order):
+        # Processes refund requests for customer orders
+        # In a real system, this would reverse charges and update inventory
+        print(f"Admin {self.adminID} processed refund for order {order.orderID}")
+        return True
+
+    def modify_discount(self, discount):
+        # Updates discount parameters such as rates or eligibility criteria
+        # In a real system, this would update the discount in the database
+        print(f"Admin {self.adminID} modified discount: {discount.__class__.__name__}")
+        return True
+
+# Discount Strategy Interface
+# This interface defines the contract for different discount types
+# Using the Strategy pattern allows flexible implementation of various discount policies which is needed in this code
+class DiscountStrategy(AbstractClass):
+    @abstractmethod
+    def apply_discount(self, amount):
+        # This method must be implemented by all concrete discount classes
+        # It calculates and returns the discount amount based on the original price given
+        pass
+
+# Group Discount implements DiscountStrategy
+# This concrete implementation of DiscountStrategy provides discounts for group bookings
+class GroupDiscount(DiscountStrategy):
+    def __init__(self, group_size, discount_rate):
+        self.group_size = group_size  # Minimum number of people required for discount
+        self.discount_rate = discount_rate  # Percentage discount as a decimal
+
+    def apply_discount(self, amount):
+        # Here we calculate the discount amount based on the total price
+        discount_amount = amount * self.discount_rate
+        print(f"Applied group discount of {self.discount_rate*100}% (${discount_amount:.2f}) for group of {self.group_size}")
+        return discount_amount
+
+    def get_minimum_size(self):
+        # Here we returns the minimum group size required for this discount
+        return self.group_size
+
+# Purchase Order class
+class PurchaseOrder:
+    def __init__(self, orderID, customerID, purchaseDate):
+        self.orderID = orderID
+        self.customerID = customerID
+        self.purchaseDate = purchaseDate
+        self.tickets = []
+        self.payment_method = None
+        self.status = "Pending"  # Pending, Completed, Cancelled
+
+    def calculate_total(self):
+        return sum(ticket.calculate_price() for ticket in self.tickets)
+
+    def confirm(self):
+        if self.payment_method and self.tickets:
+            self.status = "Completed"
+            print(f"Order {self.orderID} confirmed successfully!")
+            return True
+        else:
+            print("Cannot confirm order: payment method or tickets missing")
+            return False
+
+    def get_tickets(self):
+        return self.tickets
+
+    def add_ticket(self, ticket):
+        self.tickets.append(ticket)
+        print(f"Added {ticket.__class__.__name__} to order {self.orderID}")
+
+# Now we have the Event class
+class Event:
+    def __init__(self, eventID, name, title, date, location):
+        self.eventID = eventID
+        self.name = name
+        self.title = title
+        self.date = date
+        self.location = location
+
+    def get_event_details(self):
+        print(f"Event: {self.name} - {self.title}")
+        print(f"Date: {self.date} at {self.location}")
+        return f"{self.name} - {self.title}"
+
+    def get_remaining_capacity(self):
+        # In a real system, this would check the database
+        return 1000  # This is the placeholder value
+
+# Now we have the Abstract Ticket class
+class Ticket(AbstractClass):
+    def __init__(self, ticketID, price, seatID, eventID, ticketDate):
+        self.ticketID = ticketID
+        self.price = price
+        self.seatID = seatID
+        self.eventID = eventID
+        self.ticketDate = ticketDate
+        self.discount = None
+        self.validated = False
+
+    def get_details(self):
+        print(f"Ticket ID: {self.ticketID}")
+        print(f"Seat: {self.seatID}")
+        print(f"Event: {self.eventID}")
+        print(f"Date: {self.ticketDate}")
+        print(f"Price: ${self.price:.2f}")
+        if self.validated:
+            print("Status: Validated")
+        else:
+            print("Status: Not Validated")
+
+    def validate(self):
+        self.validated = True
+        print(f"Ticket {self.ticketID} has been validated")
+        return True
+
+    def cancel_validation(self):
+        self.validated = False
+        print(f"Ticket {self.ticketID} validation has been cancelled")
+        return True
+
+    def apply_discount(self, discount):
+        self.discount = discount
+        print(f"Discount applied to ticket {self.ticketID}")
+
+    @abstractmethod
+    def calculate_price(self):
+        pass
+
+# Single Race Ticket extends Ticket
+class SingleRaceTicket(Ticket):
+    def __init__(self, ticketID, price, seatID, eventID, ticketDate, raceDate):
+        super().__init__(ticketID, price, seatID, eventID, ticketDate)
+        self.raceDate = raceDate
+
+    def calculate_price(self):
+        if self.discount:
+            discounted_amount = self.discount.apply_discount(self.price)
+            return self.price - discounted_amount
+        return self.price
+
+    def get_details(self):
+        super().get_details()
+        print(f"Race Date: {self.raceDate}")
+
+# Weekend Package extends Ticket
+class WeekendPackage(Ticket):
+    def __init__(self, ticketID, price, seatID, eventID, ticketDate, weekendStartDate, weekendEndDate):
+        super().__init__(ticketID, price, seatID, eventID, ticketDate)
+        self.weekendStartDate = weekendStartDate
+        self.weekendEndDate = weekendEndDate
+
+    def calculate_price(self):
+        if self.discount:
+            discounted_amount = self.discount.apply_discount(self.price)
+            return self.price - discounted_amount
+        return self.price
+
+    def get_details(self):
+        super().get_details()
+        print(f"Weekend Period: {self.weekendStartDate} to {self.weekendEndDate}")
+
+# Season Membership extends Ticket
+class SeasonMembership(Ticket):
+    def __init__(self, ticketID, price, seatID, eventID, ticketDate, seasonName):
+        super().__init__(ticketID, price, seatID, eventID, ticketDate)
+        self.seasonName = seasonName
+
+    def calculate_price(self):
+        if self.discount:
+            discounted_amount = self.discount.apply_discount(self.price)
+            return self.price - discounted_amount
+        return self.price
+
+    def get_details(self):
+        super().get_details()
+        print(f"Season: {self.seasonName}")
+
+# Group Ticket extends Ticket
+class GroupTicket(Ticket):
+    def __init__(self, ticketID, price, seatID, eventID, ticketDate, groupSize, groupName):
+        super().__init__(ticketID, price, seatID, eventID, ticketDate)
+        self.groupSize = groupSize
+        self.groupName = groupName
+        # Here it will automatically apply the group discount
+        self.discount = GroupDiscount(groupSize, 0.1 if groupSize <= 10 else 0.15)
+
+    def calculate_price(self):
+        base_price = self.price * self.groupSize
+        if self.discount:
+            discounted_amount = self.discount.apply_discount(base_price)
+            return base_price - discounted_amount
+        return base_price
+
+    def get_details(self):
+        super().get_details()
+        print(f"Group: {self.groupName} (Size: {self.groupSize})")
+
+# Abstract Payment Method class
+class PaymentMethod(AbstractClass):
+    def __init__(self, amount):
+        self.amount = amount
+
+    @abstractmethod
+    def process_payment(self):
+        pass
+
+    def get_details(self):
+        print(f"Payment Amount: ${self.amount:.2f}")
+
+# Credit Card Payment extends PaymentMethod
+class CreditCardPayment(PaymentMethod):
+    def __init__(self, amount, cardNumber):
+        super().__init__(amount)
+        self.cardNumber = cardNumber
+
+    def process_payment(self):
+        # In a real system, this would connect to a payment processor
+        print(f"Processing credit card payment of ${self.amount:.2f} with card ending in {self.cardNumber[-4:]}")
+        return True
+
+    def get_details(self):
+        super().get_details()
+        print(f"Payment Method: Credit Card (ending in {self.cardNumber[-4:]})")
+
+# Digital Wallet Payment extends PaymentMethod as shown in the UML
+class DigitalWalletPayment(PaymentMethod):
+    def __init__(self, amount, walletID):
+        super().__init__(amount)
+        self.walletID = walletID
+
+    def process_payment(self):
+        # In a real system, this would connect to a digital wallet API
+        print(f"Processing digital wallet payment of ${self.amount:.2f} with wallet ID {self.walletID}")
+        return True
+
+    def get_details(self):
+        super().get_details()
+        print(f"Payment Method: Digital Wallet (ID: {self.walletID})")
+
+# Now we have the Data Manager class
+class DataManager:
+    def __init__(self, groupSize=0):
+        self.groupSize = groupSize
+
+    def save_data(self, data):
+        print(f"Saving data: {data}")
+        return True
+
+    def load_data(self, dataID):
+        print(f"Loading data with ID: {dataID}")
+        return {"dataID": dataID, "sampleData": "This is sample data"}
+
+# Now we have the GUI Manager class
+class GUIManager:
+    def show_login(self):
+        print("Displaying login screen")
+        return True
+
+    def show_booking_screen(self):
+        print("Displaying booking screen")
+        return True
+
+    def show_event_details(self, event):
+        print(f"Displaying details for event: {event.name}")
+        return True
+
+# Booking System class ( Main system class )
+# This is the central class that coordinates all system components
+# It manages users, events, and discounts while delegating specialized tasks to managers
+class BookingSystem:
+    def __init__(self):
+        self.users = []  # List of all system users (aggregation)
+        self.events = []  # List of all events (aggregation)
+        self.discounts = []  # List of available discounts (aggregation)
+        self.data_manager = DataManager()  # Handles data persistence (composition)
+        self.gui_manager = GUIManager()  # Manages user interface (composition)
+    #All are shown in ur UML
+    def register_user(self, user):
+        self.users.append(user)
+        print(f"User {user.username} registered successfully")
+        return True
+
+    def create_event(self, event):
+        self.events.append(event)
+        print(f"Event {event.name} created successfully")
+        return True
+
+    def create_discount(self, discount):
+        self.discounts.append(discount)
+        print(f"Discount created successfully")
+        return True
+
+    def find_user(self, username):
+        for user in self.users:
+            if user.username == username:
+                return user
+        return None
+
+    def find_event(self, eventID):
+        for event in self.events:
+            if event.eventID == eventID:
+                return event
+        return None
+
+    def initialize(self):
+        print("Booking system initialized successfully")
+        self.gui_manager.show_login()
+        return True
+
+
+# Now we will run some test scenarios
+# This function demonstrates various user journeys through the system
+# It showcases all major functionalities including user registration, ticket booking,payment processing, discount application, and administrative operations
+# It will show all aspeects of our system, in the best way, Hope you love it prof.
+def run_test_scenarios():
+    print("\n============== GRAND PRIX EXPERIENCE TEST SCENARIOS ==============\n")
+
+    # Initialize the booking system
+    system = BookingSystem()
+    system.initialize()
+
+    # Create administrator
+    admin = Administrator("admin123", "secure_pass", "A001")
+    system.register_user(admin)
+    admin.login()
+
+    # Create events
+    event1 = Event("E001", "Formula 1", "Monaco Grand Prix", "2023-05-28", "Circuit de Monaco")
+    event2 = Event("E002", "Formula 1", "Italian Grand Prix", "2023-09-03", "Monza Circuit")
+    event3 = Event("E003", "Formula 1", "Abu Dhabi Grand Prix", "2023-11-26", "Yas Marina Circuit") # The best one
+
+    system.create_event(event1)
+    system.create_event(event2)
+    system.create_event(event3)
+
+    print("\n----------- Event Details -----------")
+    event1.get_event_details()
+
+    # Creating and registering a customer with personal details
+    customer = Customer("areej2023", "password123", "Areej", "Abdulfattah",
+                        "123 Main St, Abu Dhabi", "+971 50 56 4390", "areej@prof.com")
+    system.register_user(customer)
+    customer.login()
+
+    # Creating the discount
+    group_discount = GroupDiscount(5, 0.15)
+    system.create_discount(group_discount)
+
+    # Admin modifies the discount
+    admin.modify_discount(group_discount)
+
+    # Creating the different types of tickets
+    single_ticket = SingleRaceTicket("T001", 700.0, "S123", "E003", datetime.now().date(), "2023-11-26")
+    weekend_ticket = WeekendPackage("T002", 1800.0, "S456", "E002", datetime.now().date(), "2023-09-01", "2023-09-03")
+    season_ticket = SeasonMembership("T003", 8000.0, "S789", "E001", datetime.now().date(), "2023 Season")
+    group_ticket = GroupTicket("T004", 500.0, "G001-G005", "E003", datetime.now().date(), 5, "Team Areej")
+
+    # Here the customer creates a purchase order
+    order = PurchaseOrder("PO001", customer.username, datetime.now().date())
+
+    # Applying the discount to tickets
+    single_ticket.apply_discount(group_discount)
+
+    # Adding tickets to order
+    order.add_ticket(single_ticket)
+    order.add_ticket(weekend_ticket)
+
+    # Setting payment method for the order
+    payment = CreditCardPayment(order.calculate_total(), "4111111111111111")
+    order.payment_method = payment
+
+    # Processing the payment and confirm the order
+    print("\n----------- Payment Processing -----------")
+    payment.process_payment()
+    order.confirm()
+
+    # Adding the order to customer's purchase history
+    customer.purchase_history.append(order)
+
+    # Creating another order with a different payment method
+    order2 = PurchaseOrder("PO002", customer.username, datetime.now().date())
+    order2.add_ticket(season_ticket)
+    order2.add_ticket(group_ticket)
+
+    # Setting payment method
+    digital_payment = DigitalWalletPayment(order2.calculate_total(), "DW12345")
+    order2.payment_method = digital_payment
+
+    # Processing the payment and confirm the order
+    print("\n----------- Second Payment Processing -----------")
+    digital_payment.process_payment()
+    order2.confirm()
+
+    # Adding the second order to customer's purchase history
+    customer.purchase_history.append(order2)
+
+    # Customer views purchase history
+    print("\n----------- Purchase History -----------")
+    customer.view_history()
+
+    # Validating a ticket
+    print("\n----------- Ticket Validation -----------")
+    single_ticket.get_details()
+    single_ticket.validate()
+    single_ticket.get_details()
+
+    # Admin processes a refund
+    print("\n----------- Refund Processing -----------")
+    admin.handle_refund(order)
+
+    # Customer logs out
+    customer.logout()
+    admin.logout()
+
+    print("\n=============== TEST SCENARIOS Done ===============")
+
+# Runbubf the test scenarios
+if __name__ == "__main__":
+    run_test_scenarios()
